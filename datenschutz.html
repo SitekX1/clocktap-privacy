@@ -95,7 +95,7 @@
       </ul>
       <div class="highlight">Die App liest ausschließlich den von ihr selbst erstellten „Clocktap"-Kalender. Andere Kalenderinhalte werden nicht abgerufen.</div>
 
-      <h3>2.7 PDF-Export und Teilen</h3>
+          <h3>2.7 PDF-Export und Teilen</h3>
       <ul>
         <li><strong>Daten:</strong> Vollständiger Regiebericht (Zeiten, Mitarbeiter, Kunde, Material, Unterschrift, Logo)</li>
         <li><strong>Zweck:</strong> Weitergabe an Kunden oder Auftraggeber</li>
@@ -103,7 +103,25 @@
       </ul>
       <div class="highlight">Der Export erfolgt ausschließlich auf Anweisung des Nutzers. Die Empfänger bestimmt der Nutzer selbst.</div>
 
-      <h3>2.8 Cloud-Datensicherung (geplant – nach Launch)</h3>
+      <h3>2.8 Nutzungsanalyse (Analytics)</h3>
+      <ul>
+        <li><strong>Daten:</strong> Anonyme Gerätekennzeichnung (zufällig generierte UUID), Ereignistyp (z. B. App-Start, Einstempelvorgang, KI-Berichterstellung), Zeitstempel</li>
+        <li><strong>Zweck:</strong> Verbesserung der App, Verständnis von Nutzungsmustern</li>
+        <li><strong>Rechtsgrundlage:</strong> Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO) — keine Personenidentifikation möglich</li>
+        <li><strong>Anbieter:</strong> Google Firebase/Firestore, Google Ireland Limited, Dublin 4, Irland</li>
+      </ul>
+      <div class="highlight">Es werden keine personenbezogenen Inhalte übertragen. Die Gerätekennzeichnung ist nicht auf eine bestimmte Person zurückführbar.</div>
+
+      <h3>2.9 In-App-Feedback</h3>
+      <ul>
+        <li><strong>Daten:</strong> Feedback-Kategorie, Bereich, Titel, Beschreibungstext, optional: E-Mail-Adresse</li>
+        <li><strong>Zweck:</strong> Verbesserung der App, Beantwortung von Nutzeranfragen</li>
+        <li><strong>Rechtsgrundlage:</strong> Einwilligung durch freiwillige Übermittlung (Art. 6 Abs. 1 lit. a DSGVO)</li>
+        <li><strong>Anbieter:</strong> Google Firebase/Firestore, Google Ireland Limited, Dublin 4, Irland</li>
+      </ul>
+      <div class="highlight">Die E-Mail-Adresse ist optional. Ohne Angabe ist das Feedback vollständig anonym.</div>
+
+      <h3>2.11 Cloud-Datensicherung (geplant – nach Launch)</h3>
       <ul>
         <li><strong>Daten:</strong> Vollständige App-Daten, verschlüsselt</li>
         <li><strong>Zweck:</strong> Geräteübergreifende Datensicherung (Pro-Feature)</li>
@@ -111,6 +129,7 @@
       </ul>
       <div class="highlight">Diese Funktion ist derzeit in Entwicklung. Bei Aktivierung wird der Nutzer gesondert informiert.</div>
     </div>
+
 
     <div class="card">
       <h2>3. Datenweitergabe</h2>
