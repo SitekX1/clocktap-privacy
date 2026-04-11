@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Datenlöschung – Clocktap</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f7; color: #1d1d1f; padding: 40px 20px; }
+    .container { max-width: 720px; margin: 0 auto; }
+    .back { display: inline-block; color: #0071e3; font-size: 14px; margin-bottom: 24px; text-decoration: none; }
+    .back:hover { text-decoration: underline; }
+    h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+    .meta { font-size: 13px; color: #888; margin-bottom: 32px; }
+    .card { background: #fff; border-radius: 16px; padding: 28px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    h2 { font-size: 17px; font-weight: 700; margin-bottom: 14px; color: #1d1d1f; }
+    p { font-size: 15px; line-height: 1.6; color: #444; margin-bottom: 10px; }
+    ul { padding-left: 20px; margin-bottom: 10px; }
+    li { font-size: 15px; line-height: 1.7; color: #444; }
+    strong { color: #1d1d1f; }
+    a { color: #0071e3; }
+    .highlight { background: #f0f7ff; border-left: 3px solid #0071e3; padding: 14px 18px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 15px; color: #1d1d1f; }
+    .step { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 16px; }
+    .step-num { background: #0071e3; color: #fff; font-size: 13px; font-weight: 700; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .step-text { font-size: 15px; line-height: 1.6; color: #444; }
+    .email-btn { display: inline-block; background: #0071e3; color: #fff; font-size: 15px; font-weight: 600; padding: 12px 24px; border-radius: 10px; text-decoration: none; margin-top: 6px; }
+    .email-btn:hover { background: #0062c4; }
+    .tag { display: inline-block; background: #f0f0f0; color: #555; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; margin: 2px; }
+    .tag.red { background: #fff0f0; color: #c00; }
+    .tag.green { background: #f0fff4; color: #1a7a3c; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back" href="index.html">← Zurück</a>
+    <h1>Datenlöschung anfordern</h1>
+    <p class="meta">Clocktap &nbsp;|&nbsp; Verantwortlicher: Alexander Sitek, as@sitekx.de</p>
+
+    <!-- Lokale Daten -->
+    <div class="card">
+      <h2>📱 Lokale App-Daten</h2>
+      <p>Der Großteil deiner Daten wird <strong>ausschließlich lokal auf deinem Gerät</strong> gespeichert und verlässt es nie:</p>
+      <ul style="margin: 10px 0 14px;">
+        <li>Zeiteinträge (Arbeitszeiten, Pausen)</li>
+        <li>Regieberichte und Unterschriften</li>
+        <li>Kalender (Urlaub, Gleittage, Krank)</li>
+        <li>Einstellungen, Firmenlogo, Schichtplan</li>
+      </ul>
+      <div class="highlight">
+        Diese Daten kannst du <strong>jederzeit selbst löschen</strong> — durch Deinstallation der App oder über Einstellungen → Export → Datensicherung.
+      </div>
+    </div>
+
+    <!-- Server-Daten -->
+    <div class="card">
+      <h2>☁️ Serverseitig gespeicherte Daten</h2>
+      <p>Folgende Daten werden auf unseren Servern (Google Firebase) gespeichert und können auf Anfrage gelöscht werden:</p>
+
+      <div style="margin: 14px 0;">
+        <p style="margin-bottom: 8px;"><strong>Analytics-Ereignisse</strong> <span class="tag">Firebase Firestore</span></p>
+        <ul>
+          <li>Anonyme Geräte-ID (zufällig generierte UUID, nicht personenbezogen)</li>
+          <li>Ereignistyp (z.B. App-Start, Einstempelvorgang)</li>
+          <li>Zeitstempel</li>
+        </ul>
+        <p style="margin-top: 6px; font-size: 14px; color: #888;">Aufbewahrung: 12 Monate, danach automatisch gelöscht.</p>
+      </div>
+
+      <div style="margin: 14px 0; padding-top: 14px; border-top: 1px solid #f0f0f0;">
+        <p style="margin-bottom: 8px;"><strong>Feedback-Nachrichten</strong> <span class="tag">Firebase Firestore</span></p>
+        <ul>
+          <li>Feedback-Kategorie und Beschreibungstext</li>
+          <li>Optional: E-Mail-Adresse (nur wenn angegeben)</li>
+        </ul>
+        <p style="margin-top: 6px; font-size: 14px; color: #888;">Aufbewahrung: bis zur manuellen Löschung durch den Entwickler.</p>
+      </div>
+    </div>
+
+    <!-- Löschung anfordern -->
+    <div class="card">
+      <h2>🗑️ Löschung anfordern</h2>
+      <p>So kannst du die Löschung deiner serverseitigen Daten anfordern:</p>
+
+      <div style="margin: 16px 0;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-text">Sende eine E-Mail an <strong>as@sitekx.de</strong> mit dem Betreff:<br><strong>"Clocktap – Datenlöschung"</strong></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-text">Gib optional deine E-Mail-Adresse an, die du beim Feedback verwendet hast (falls zutreffend).</div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-text">Wir bestätigen die Löschung innerhalb von <strong>30 Tagen</strong> per E-Mail.</div>
+        </div>
+      </div>
+
+      <a class="email-btn" href="mailto:as@sitekx.de?subject=Clocktap%20%E2%80%93%20Datenl%C3%B6schung">E-Mail senden</a>
+    </div>
+
+    <!-- Was bleibt -->
+    <div class="card">
+      <h2>ℹ️ Was nach der Löschung verbleibt</h2>
+      <p>Nach der Löschung werden folgende Daten <strong>nicht</strong> entfernt, da sie anonym sind und keine Rückführung auf eine Person ermöglichen:</p>
+      <ul style="margin-top: 8px;">
+        <li>Aggregierte, nicht personenbezogene Statistiken</li>
+      </ul>
+      <p style="margin-top: 10px;">Alle anderen Daten werden vollständig und unwiderruflich gelöscht.</p>
+    </div>
+
+    <p style="font-size: 13px; color: #aaa; text-align: center; margin-top: 8px;">
+      Clocktap &nbsp;·&nbsp; Alexander Sitek &nbsp;·&nbsp; <a href="datenschutz.html">Datenschutzerklärung</a>
+    </p>
+  </div>
+</body>
+</html>
