@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { View, Text, TouchableOpacity, ScrollView, Image, Modal, ActivityIndicator, Alert, Linking, TextInput } from "react-native";
 import FeedbackModal from "../FeedbackModal";
 import HintModal from "../HintModal";
@@ -15,6 +15,8 @@ import { Card, Divider, Input, Toggle, TimeInput, DateInput, useProGate, ProGate
 import { pad, dayKey, MONTHS, getSollStundenForDate, hoursToMs } from "../utils";
 import { buildStatistikPdfHtml } from "../pdfTemplate";
 import { BUNDESLAENDER } from "../feiertage";
+import { supabase } from "../supabase";
+import { loadWorkspaceSettings, bulkUploadLocalData } from "../syncService";
 
 interface Props { state: AppState; dispatch: React.Dispatch<Action>; t: Theme; active?: boolean; }
 
@@ -83,7 +85,7 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
   const [neuerBegriff, setNeuerBegriff] = React.useState("");
   const [open, setOpen] = React.useState<Record<string, boolean>>({
     darstellung: false, profil: false, abo: false, feedback: false,
-    arbeitszeit: false, urlaub: false, stunden: false, kalender: false, features: false, einrichtung: false, export: false, vokabular: false,
+    arbeitszeit: false, urlaub: false, stunden: false, kalender: false, features: false, einrichtung: false, export: false, vokabular: false, workspace: false,
   });
   const toggle = (key: string) => {
     const willOpen = !open[key];
@@ -96,8 +98,56 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
     }
   };
   React.useEffect(() => {
-    if (!active) setOpen({ darstellung: false, profil: false, abo: false, feedback: false, arbeitszeit: false, urlaub: false, stunden: false, kalender: false, features: false, einrichtung: false, export: false, vokabular: false });
+    if (!active) setOpen({ darstellung: false, profil: false, abo: false, feedback: false, arbeitszeit: false, urlaub: false, stunden: false, kalender: false, features: false, einrichtung: false, export: false, vokabular: false, workspace: false });
   }, [active]);
+
+  // ── Workspace Login ─────────────────────────────────────────────────────────
+  const [wsLoginVisible, setWsLoginVisible] = React.useState(false);
+  const [wsEmail, setWsEmail] = React.useState("");
+  const [wsPassword, setWsPassword] = React.useState("");
+  const [wsLoading, setWsLoading] = React.useState(false);
+  const [wsError, setWsError] = React.useState("");
+
+  async function handleWorkspaceBeitreten() {
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(wsEmail.trim());
+    if (!emailOk) { setWsError("Bitte eine gültige E-Mail-Adresse eingeben."); return; }
+    if (wsPassword.trim().length < 6) { setWsError("Passwort muss mindestens 6 Zeichen lang sein."); return; }
+    setWsLoading(true);
+    setWsError("");
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email: wsEmail.trim(), password: wsPassword.trim() });
+      if (error) { setWsError("Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen."); setWsLoading(false); return; }
+
+      const wsSettings = await loadWorkspaceSettings();
+      if (!wsSettings) { setWsError("Kein Workspace gefunden. Bitte den Arbeitgeber kontaktieren."); await supabase.auth.signOut(); setWsLoading(false); return; }
+
+      await bulkUploadLocalData(state, wsSettings.workspaceId);
+      dispatch({ type: "APPLY_WORKSPACE_SETTINGS", payload: wsSettings });
+      setWsLoginVisible(false);
+      setWsEmail("");
+      setWsPassword("");
+      Alert.alert("Verbunden! ✅", `Du bist jetzt mit dem Workspace von ${wsSettings.firma} verbunden.`);
+    } catch {
+      setWsError("Verbindungsfehler. Bitte erneut versuchen.");
+    }
+    setWsLoading(false);
+  }
+
+  async function handleWorkspaceAbmelden() {
+    Alert.alert(
+      "Workspace verlassen?",
+      "Deine lokalen Daten bleiben erhalten. Die Verbindung zum Arbeitgeber wird getrennt.",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Abmelden", style: "destructive", onPress: async () => {
+            await supabase.auth.signOut();
+            dispatch({ type: "SET_SETTINGS_MULTI", payload: { cloudSync: false, isWorkspace: false } });
+          }
+        },
+      ]
+    );
+  }
 
   // ── Export ──────────────────────────────────────────────────────────────────
   const isPro = settings.isPro ?? false;
@@ -647,6 +697,105 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
           </TouchableOpacity>
         </Card>
       )}
+
+      {/* Workspace */}
+      {(() => {
+        const isWorkspace = settings.cloudSync === true;
+        return (
+      <>
+      <SectionHeader label="Workspace" skey="workspace" emoji="🏢" />
+      {open.workspace && (
+        <Card t={t} style={{ padding: 16 }}>
+          {isWorkspace ? (
+            <>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: t.green + "22", alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 20 }}>🏢</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: t.text }}>{settings.firma || "Workspace"}</Text>
+                  <Text style={{ fontSize: 12, color: t.green, marginTop: 2 }}>● Verbunden</Text>
+                </View>
+              </View>
+              <Text style={{ fontSize: 12, color: t.text3, lineHeight: 17, marginBottom: 16 }}>
+                Deine Arbeitszeiten werden mit dem Arbeitgeber synchronisiert. Vertragliche Einstellungen werden vom Arbeitgeber verwaltet.
+              </Text>
+              <TouchableOpacity
+                onPress={handleWorkspaceAbmelden}
+                style={{ backgroundColor: t.bg3, borderRadius: 10, paddingVertical: 11, alignItems: "center" }}>
+                <Text style={{ fontSize: 14, color: t.red, fontWeight: "600" }}>Workspace verlassen</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={{ fontSize: 14, color: t.text, fontWeight: "600", marginBottom: 6 }}>Einem Workspace beitreten</Text>
+              <Text style={{ fontSize: 12, color: t.text3, lineHeight: 17, marginBottom: 16 }}>
+                Du hast eine Einladung von deinem Arbeitgeber erhalten? Melde dich hier mit deinen Zugangsdaten an.
+              </Text>
+              <TouchableOpacity
+                onPress={() => { setWsError(""); setWsLoginVisible(true); }}
+                style={{ backgroundColor: t.blue, borderRadius: 10, paddingVertical: 12, alignItems: "center" }}>
+                <Text style={{ fontSize: 14, color: "#fff", fontWeight: "700" }}>🔗 Anmelden & verbinden</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </Card>
+      )}
+
+      {/* Workspace Login Modal */}
+      <Modal visible={wsLoginVisible} transparent animationType="slide" onRequestClose={() => { setWsLoginVisible(false); setWsPassword(""); setWsError(""); }}>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <View style={{ backgroundColor: t.bg2, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <Text style={{ fontSize: 18, fontWeight: "700", color: t.text }}>Workspace beitreten</Text>
+              <TouchableOpacity onPress={() => { setWsLoginVisible(false); setWsPassword(""); setWsError(""); }}>
+                <Text style={{ fontSize: 22, color: t.text3, lineHeight: 26 }}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 12, color: t.text3, marginBottom: 18, lineHeight: 17 }}>
+              Verwende die E-Mail und das Passwort aus der Einladung deines Arbeitgebers.
+            </Text>
+            <Text style={{ fontSize: 12, color: t.text3, marginBottom: 6 }}>E-Mail</Text>
+            <TextInput
+              value={wsEmail}
+              onChangeText={setWsEmail}
+              placeholder="deine@email.de"
+              placeholderTextColor={t.text4}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={{ backgroundColor: t.bg3, borderRadius: 10, padding: 12, color: t.text, fontSize: 14, marginBottom: 14 }}
+            />
+            <Text style={{ fontSize: 12, color: t.text3, marginBottom: 6 }}>Passwort</Text>
+            <TextInput
+              value={wsPassword}
+              onChangeText={setWsPassword}
+              placeholder="Passwort"
+              placeholderTextColor={t.text4}
+              secureTextEntry
+              style={{ backgroundColor: t.bg3, borderRadius: 10, padding: 12, color: t.text, fontSize: 14, marginBottom: wsError ? 10 : 20 }}
+            />
+            {wsError ? (
+              <Text style={{ fontSize: 12, color: t.red, marginBottom: 14 }}>{wsError}</Text>
+            ) : null}
+            <TouchableOpacity
+              onPress={() => Linking.openURL("https://clocktap-web.vercel.app/login/passwort-vergessen")}
+              style={{ alignSelf: "flex-end", marginBottom: 16, marginTop: wsError ? 0 : 4 }}>
+              <Text style={{ fontSize: 12, color: t.blue }}>Passwort vergessen?</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleWorkspaceBeitreten}
+              disabled={wsLoading}
+              style={{ backgroundColor: wsLoading ? t.bg3 : t.blue, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}>
+              {wsLoading
+                ? <ActivityIndicator color={t.text3} />
+                : <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>Verbinden</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      </>
+        );
+      })()}
 
       {/* Fachbegriffe / Vokabular */}
       {settings.hatRegiebericht && (
@@ -1428,7 +1577,7 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
             <ScrollView contentContainerStyle={{ padding: 20 }}>
               {legalModal === "datenschutz" && (
                 <Text style={{ fontSize: 14, color: t.text2, lineHeight: 22 }}>
-                  {settings.cloudSync ? `Datenschutzerklärung – clocktap (Workspace)\nStand: Mai 2026\nVerantwortlicher: Alexander Sitek, as@sitekx.de\n\n⚠️ Hinweis: Du nutzt clocktap im Rahmen eines Beschäftigungsverhältnisses. Dein Arbeitgeber ist datenschutzrechtlich Verantwortlicher für deine Arbeitszeitdaten. Wir (SitekX) handeln als Auftragsverarbeiter gemäß Art. 28 DSGVO. Die vollständigen Datenschutzinformationen erhältst du von deinem Arbeitgeber.\n\nNachfolgend informieren wir über Daten, die wir selbst als Verantwortliche verarbeiten.\n\n1. Account-Daten\n\nDaten: E-Mail-Adresse, Name.\nZweck: Authentifizierung und Accountverwaltung.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nAnbieter: Supabase Inc., USA – Datenhaltung EU (Frankfurt/AWS).\nDatenschutz: supabase.com/privacy\nGarantie: EU-Standardvertragsklauseln.\n\n2. Zeiterfassungsdaten (Cloud)\n\nDaten: Arbeitszeiten, Pausen, optionale GPS-Koordinaten, Abwesenheiten, Urlaubsanträge.\nZweck: Bereitstellung der Workspace-Funktion; Zugriff durch deinen Arbeitgeber über das Web-Dashboard.\nRechtsgrundlage: Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 26 BDSG (Beschäftigtendatenschutz).\nAnbieter: Supabase Inc. (EU-Region Frankfurt).\nHinweis: Dein Arbeitgeber ist Verantwortlicher für diese Verarbeitung und kann diese Daten im clocktap-Dashboard einsehen.\n\n3. KI-Texterkennung (Foto-Import)\n\nDaten: Bilddaten von Belegen.\nZweck: Automatische Texterkennung (OCR).\nRechtsgrundlage: Einwilligung durch aktive Nutzung (Art. 6 Abs. 1 lit. a DSGVO).\nAnbieter: Anthropic PBC, San Francisco, USA.\nDatenschutz: anthropic.com/privacy\nGarantie: EU-Standardvertragsklauseln.\nHinweis: Bilddaten werden nicht für KI-Training verwendet.\n\n4. Push-Benachrichtigungen\n\nDaten: Gerätespezifisches Push-Token.\nZweck: Benachrichtigungen (Genehmigungen, Erinnerungen).\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nWiderruf: Jederzeit in den Systemeinstellungen unter „Benachrichtigungen".\nAnbieter: Expo/Firebase Cloud Messaging (Google Ireland Limited).\n\n5. Nutzungsanalyse\n\nDaten: Anonyme Ereignisdaten (App-Start, Funktionsnutzung).\nZweck: App-Verbesserung. Keine Personenidentifikation möglich.\nRechtsgrundlage: Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO).\nAnbieter: Firebase Analytics, Google Ireland Limited, Dublin 4, Irland.\n\n6. Datenweitergabe\n\nDeine Zeiterfassungsdaten sind für deinen Arbeitgeber im clocktap-Dashboard sichtbar. Keine Weitergabe zu Werbezwecken.\n\n7. Deine Rechte (DSGVO)\n\nAuskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20), Widerspruch (Art. 21), Widerruf (Art. 7 Abs. 3).\n\nFür Rechte bezüglich deiner Arbeitszeitdaten: an deinen Arbeitgeber wenden.\nFür Rechte bezüglich deiner Account-Daten: as@sitekx.de\n\nBeschwerde bei der Aufsichtsbehörde:\nBayerisches Landesamt für Datenschutzaufsicht (BayLDA)\nwww.lda.bayern.de\n\n8. Datensicherheit\n\nAlle Datenübertragungen sind TLS/HTTPS-verschlüsselt. Der Datenbankzugriff ist durch Row-Level Security (RLS) abgesichert – du hast ausschließlich Zugriff auf deine eigenen Daten.\n\n9. Kontakt\n\nAlexander Sitek, SitekX\nRichard-Strauss-Str. 4\n86663 Asbach-Bäumenheim\nE-Mail: as@sitekx.de` : `Datenschutzerklärung – clocktap\nStand: Mai 2026\nVerantwortlicher: Alexander Sitek, as@sitekx.de\n\n1. Allgemeines\n\nDiese Datenschutzerklärung informiert über Art, Umfang und Zweck der Verarbeitung personenbezogener Daten bei der Nutzung der App clocktap. Die App richtet sich an Arbeitnehmer und Selbstständige zur digitalen Zeiterfassung und Erstellung von Regieberichten.\n\nRechtsgrundlagen: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO) und Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\n\nPersonenbezogene Daten werden gelöscht oder gesperrt, sobald der Zweck der Speicherung entfällt.\n\n2. Erhobene Daten und Zwecke\n\n2.1 Account-Daten\nDaten: E-Mail-Adresse, Name.\nZweck: Authentifizierung und Accountverwaltung.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nAnbieter: Supabase Inc., USA – Datenhaltung EU (Frankfurt). supabase.com/privacy\nHinweis: Nur Account-Daten gehen an Supabase. Deine Zeiterfassungsdaten bleiben lokal auf dem Gerät.\n\n2.2 Lokale Zeiterfassungsdaten\nDaten: Arbeitszeiteinträge (Start, Ende, Pausen, GPS-Koordinaten), Regieberichte, Einstellungen, Schichtplan, Urlaubsdaten.\nZweck: Kernfunktion der App – Zeiterfassung, Berichtserstellung, Auswertungen.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nSpeicherort: Ausschließlich lokal auf dem Gerät. Daten verlassen das Gerät nur auf deinen expliziten Wunsch (z. B. PDF-Export).\n\n2.3 KI-Berichterstellung – Anthropic Claude API (Pro)\nDaten: Zeitblöcke, Mitarbeiterliste, Kundenname, Freitext-Notizen.\nZweck: KI-gestützte Erstellung und Optimierung von Regieberichten.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nAnbieter: Anthropic PBC, 548 Market St, San Francisco, CA 94104, USA. anthropic.com/privacy\nGarantie: EU-Standardvertragsklauseln.\nÜbermittelte Daten werden von Anthropic nicht für das Training eigener Modelle verwendet.\n\n2.4 In-App-Käufe – RevenueCat / Google Play (geplant)\nDaten: Kaufhistorie, Abonnementstatus, anonyme Nutzer-ID.\nZweck: Verwaltung von Pro-Abonnements.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nAnbieter: RevenueCat, Inc., Sunnyvale, CA, USA. revenuecat.com/privacy\nZahlungsabwicklung ausschließlich über Google Play – keine Zahlungsdaten werden von der App verarbeitet.\n\n2.5 Standortdaten (GPS)\nDaten: GPS-Koordinaten beim Einstempeln und Ausstempeln.\nZweck: Dokumentation des Arbeitsortes.\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nStandardmäßig deaktiviert. GPS-Daten werden ausschließlich lokal gespeichert.\n\n2.6 Kalender-Zugriff (Pro)\nDaten: Schichtplan-Einträge (Datum, Zeiten, Bezeichnung).\nZweck: Export in den nativen Android-Kalender.\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nDie App liest ausschließlich den von ihr selbst erstellten „clocktap"-Kalender.\n\n2.7 Push-Benachrichtigungen\nDaten: Gerätespezifisches Push-Token.\nZweck: Benachrichtigungen (Genehmigungen, Erinnerungen).\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nWiderruf: Jederzeit in den Systemeinstellungen unter „Benachrichtigungen".\nAnbieter: Expo/Firebase Cloud Messaging (Google Ireland Limited).\n\n2.8 Nutzungsanalyse\nDaten: Anonyme Gerätekennzeichnung (zufällig generierte UUID), Ereignistyp, Zeitstempel.\nZweck: App-Verbesserung. Keine Personenidentifikation möglich.\nRechtsgrundlage: Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO).\nAnbieter: Firebase Analytics, Google Ireland Limited, Dublin 4, Irland.\n\n2.9 In-App-Feedback\nDaten: Feedback-Kategorie, Titel, Beschreibung, optional: E-Mail-Adresse.\nZweck: App-Verbesserung und Nutzeranfragen.\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nAnbieter: Firebase/Firestore, Google Ireland Limited.\nOhne E-Mail-Angabe vollständig anonym.\n\n3. Datenweitergabe\n\nPersonenbezogene Daten werden nur an die genannten Dienstleister weitergegeben. Keine Weitergabe zu Werbezwecken.\n\n4. Datenübertragung in Drittländer\n\nAnthroptic (USA) und RevenueCat (USA) verarbeiten Daten auf Basis von EU-Standardvertragsklauseln (Art. 46 DSGVO).\n\n5. Datenspeicherung und Löschung\n\n- Lokale Daten: gespeichert bis zur Deinstallation.\n- Account-Daten (Supabase): bis zur Account-Löschung, danach innerhalb 30 Tagen.\n- Daten bei Drittanbietern auf Anfrage löschbar (as@sitekx.de).\n\n6. Datensicherheit\n\nAlle Datenübertragungen zur Anthropic API und zu Supabase erfolgen verschlüsselt über TLS. Lokal gespeicherte Daten sind durch die Geräteverschlüsselung von Android geschützt.\n\n7. Deine Rechte (DSGVO)\n\nDu hast folgende Rechte:\n- Auskunft (Art. 15 DSGVO)\n- Berichtigung (Art. 16 DSGVO)\n- Löschung (Art. 17 DSGVO)\n- Einschränkung der Verarbeitung (Art. 18 DSGVO)\n- Datenübertragbarkeit (Art. 20 DSGVO)\n- Widerspruch (Art. 21 DSGVO)\n- Widerruf einer Einwilligung jederzeit (Art. 7 Abs. 3 DSGVO)\n- Beschwerde bei der Aufsichtsbehörde (Art. 77 DSGVO)\n\nKontakt: as@sitekx.de\nBayerisches Landesamt für Datenschutzaufsicht (BayLDA): www.lda.bayern.de\n\n8. Kontakt\n\nAlexander Sitek, SitekX\nRichard-Strauss-Str. 4\n86663 Asbach-Bäumenheim\nE-Mail: as@sitekx.de\n\n9. Änderungen\n\nDiese Datenschutzerklärung kann aktualisiert werden. Über wesentliche Änderungen wird in der App informiert.`}
+                  {settings.cloudSync ? `Datenschutzerklärung – clocktap (Workspace)\nStand: Mai 2026\nVerantwortlicher: Alexander Sitek, as@sitekx.de\n\n⚠️ Hinweis: Du nutzt clocktap im Rahmen eines Beschäftigungsverhältnisses. Dein Arbeitgeber ist datenschutzrechtlich Verantwortlicher für deine Arbeitszeitdaten. Wir (SitekX) handeln als Auftragsverarbeiter gemäß Art. 28 DSGVO. Die vollständigen Datenschutzinformationen erhältst du von deinem Arbeitgeber.\n\nNachfolgend informieren wir über Daten, die wir selbst als Verantwortliche verarbeiten.\n\n1. Account-Daten\n\nDaten: E-Mail-Adresse, Name.\nZweck: Authentifizierung und Accountverwaltung.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nAnbieter: Supabase Inc., USA – Datenhaltung EU (West EU, Irland / AWS eu-west-1).\nDatenschutz: supabase.com/privacy\nGarantie: EU-Standardvertragsklauseln.\n\n2. Zeiterfassungsdaten (Cloud)\n\nDaten: Arbeitszeiten, Pausen, optionale GPS-Koordinaten, Abwesenheiten, Urlaubsanträge.\nZweck: Bereitstellung der Workspace-Funktion; Zugriff durch deinen Arbeitgeber über das Web-Dashboard.\nRechtsgrundlage: Art. 6 Abs. 1 lit. c DSGVO i. V. m. § 26 BDSG (Beschäftigtendatenschutz).\nAnbieter: Supabase Inc. (EU-Region Irland, eu-west-1).\nHinweis: Dein Arbeitgeber ist Verantwortlicher für diese Verarbeitung und kann diese Daten im clocktap-Dashboard einsehen.\n\n3. KI-Texterkennung (Foto-Import)\n\nDaten: Bilddaten von Belegen.\nZweck: Automatische Texterkennung (OCR).\nRechtsgrundlage: Einwilligung durch aktive Nutzung (Art. 6 Abs. 1 lit. a DSGVO).\nAnbieter: Anthropic PBC, San Francisco, USA.\nDatenschutz: anthropic.com/privacy\nGarantie: EU-Standardvertragsklauseln.\nHinweis: Bilddaten werden nicht für KI-Training verwendet.\n\n4. Push-Benachrichtigungen\n\nDaten: Gerätespezifisches Push-Token.\nZweck: Benachrichtigungen (Genehmigungen, Erinnerungen).\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nWiderruf: Jederzeit in den Systemeinstellungen unter „Benachrichtigungen".\nAnbieter: Expo/Firebase Cloud Messaging (Google Ireland Limited).\n\n5. Nutzungsanalyse\n\nDaten: Anonyme Ereignisdaten (App-Start, Funktionsnutzung).\nZweck: App-Verbesserung. Keine Personenidentifikation möglich.\nRechtsgrundlage: Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO).\nAnbieter: Firebase Analytics, Google Ireland Limited, Dublin 4, Irland.\n\n6. Datenweitergabe\n\nDeine Zeiterfassungsdaten sind für deinen Arbeitgeber im clocktap-Dashboard sichtbar. Keine Weitergabe zu Werbezwecken.\n\n7. Deine Rechte (DSGVO)\n\nAuskunft (Art. 15), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung (Art. 18), Datenübertragbarkeit (Art. 20), Widerspruch (Art. 21), Widerruf (Art. 7 Abs. 3).\n\nFür Rechte bezüglich deiner Arbeitszeitdaten: an deinen Arbeitgeber wenden.\nFür Rechte bezüglich deiner Account-Daten: as@sitekx.de\n\nBeschwerde bei der Aufsichtsbehörde:\nBayerisches Landesamt für Datenschutzaufsicht (BayLDA)\nwww.lda.bayern.de\n\n8. Datensicherheit\n\nAlle Datenübertragungen sind TLS/HTTPS-verschlüsselt. Der Datenbankzugriff ist durch Row-Level Security (RLS) abgesichert – du hast ausschließlich Zugriff auf deine eigenen Daten.\n\n9. Kontakt\n\nAlexander Sitek, SitekX\nRichard-Strauss-Str. 4\n86663 Asbach-Bäumenheim\nE-Mail: as@sitekx.de` : `Datenschutzerklärung – clocktap\nStand: Mai 2026\nVerantwortlicher: Alexander Sitek, as@sitekx.de\n\n1. Allgemeines\n\nDiese Datenschutzerklärung informiert über Art, Umfang und Zweck der Verarbeitung personenbezogener Daten bei der Nutzung der App clocktap. Die App richtet sich an Arbeitnehmer und Selbstständige zur digitalen Zeiterfassung und Erstellung von Regieberichten.\n\nRechtsgrundlagen: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO) und Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\n\nPersonenbezogene Daten werden gelöscht oder gesperrt, sobald der Zweck der Speicherung entfällt.\n\n2. Erhobene Daten und Zwecke\n\n2.1 Account-Daten\nDaten: E-Mail-Adresse, Name.\nZweck: Authentifizierung und Accountverwaltung.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nAnbieter: Supabase Inc., USA – Datenhaltung EU (Irland, eu-west-1). supabase.com/privacy\nHinweis: Nur Account-Daten gehen an Supabase. Deine Zeiterfassungsdaten bleiben lokal auf dem Gerät.\n\n2.2 Lokale Zeiterfassungsdaten\nDaten: Arbeitszeiteinträge (Start, Ende, Pausen, GPS-Koordinaten), Regieberichte, Einstellungen, Schichtplan, Urlaubsdaten.\nZweck: Kernfunktion der App – Zeiterfassung, Berichtserstellung, Auswertungen.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nSpeicherort: Ausschließlich lokal auf dem Gerät. Daten verlassen das Gerät nur auf deinen expliziten Wunsch (z. B. PDF-Export).\n\n2.3 KI-Berichterstellung – Anthropic Claude API (Pro)\nDaten: Zeitblöcke, Mitarbeiterliste, Kundenname, Freitext-Notizen.\nZweck: KI-gestützte Erstellung und Optimierung von Regieberichten.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nAnbieter: Anthropic PBC, 548 Market St, San Francisco, CA 94104, USA. anthropic.com/privacy\nGarantie: EU-Standardvertragsklauseln.\nÜbermittelte Daten werden von Anthropic nicht für das Training eigener Modelle verwendet.\n\n2.4 In-App-Käufe – RevenueCat / Google Play (geplant)\nDaten: Kaufhistorie, Abonnementstatus, anonyme Nutzer-ID.\nZweck: Verwaltung von Pro-Abonnements.\nRechtsgrundlage: Vertragserfüllung (Art. 6 Abs. 1 lit. b DSGVO).\nAnbieter: RevenueCat, Inc., Sunnyvale, CA, USA. revenuecat.com/privacy\nZahlungsabwicklung ausschließlich über Google Play – keine Zahlungsdaten werden von der App verarbeitet.\n\n2.5 Standortdaten (GPS)\nDaten: GPS-Koordinaten beim Einstempeln und Ausstempeln.\nZweck: Dokumentation des Arbeitsortes.\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nStandardmäßig deaktiviert. GPS-Daten werden ausschließlich lokal gespeichert.\n\n2.6 Kalender-Zugriff (Pro)\nDaten: Schichtplan-Einträge (Datum, Zeiten, Bezeichnung).\nZweck: Export in den nativen Android-Kalender.\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nDie App liest ausschließlich den von ihr selbst erstellten „clocktap"-Kalender.\n\n2.7 Push-Benachrichtigungen\nDaten: Gerätespezifisches Push-Token.\nZweck: Benachrichtigungen (Genehmigungen, Erinnerungen).\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nWiderruf: Jederzeit in den Systemeinstellungen unter „Benachrichtigungen".\nAnbieter: Expo/Firebase Cloud Messaging (Google Ireland Limited).\n\n2.8 Nutzungsanalyse\nDaten: Anonyme Gerätekennzeichnung (zufällig generierte UUID), Ereignistyp, Zeitstempel.\nZweck: App-Verbesserung. Keine Personenidentifikation möglich.\nRechtsgrundlage: Berechtigtes Interesse (Art. 6 Abs. 1 lit. f DSGVO).\nAnbieter: Firebase Analytics, Google Ireland Limited, Dublin 4, Irland.\n\n2.9 In-App-Feedback\nDaten: Feedback-Kategorie, Titel, Beschreibung, optional: E-Mail-Adresse.\nZweck: App-Verbesserung und Nutzeranfragen.\nRechtsgrundlage: Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).\nAnbieter: Firebase/Firestore, Google Ireland Limited.\nOhne E-Mail-Angabe vollständig anonym.\n\n3. Datenweitergabe\n\nPersonenbezogene Daten werden nur an die genannten Dienstleister weitergegeben. Keine Weitergabe zu Werbezwecken.\n\n4. Datenübertragung in Drittländer\n\nAnthroptic (USA) und RevenueCat (USA) verarbeiten Daten auf Basis von EU-Standardvertragsklauseln (Art. 46 DSGVO).\n\n5. Datenspeicherung und Löschung\n\n- Lokale Daten: gespeichert bis zur Deinstallation.\n- Account-Daten (Supabase): bis zur Account-Löschung, danach innerhalb 30 Tagen.\n- Daten bei Drittanbietern auf Anfrage löschbar (as@sitekx.de).\n\n6. Datensicherheit\n\nAlle Datenübertragungen zur Anthropic API und zu Supabase erfolgen verschlüsselt über TLS. Lokal gespeicherte Daten sind durch die Geräteverschlüsselung von Android geschützt.\n\n7. Deine Rechte (DSGVO)\n\nDu hast folgende Rechte:\n- Auskunft (Art. 15 DSGVO)\n- Berichtigung (Art. 16 DSGVO)\n- Löschung (Art. 17 DSGVO)\n- Einschränkung der Verarbeitung (Art. 18 DSGVO)\n- Datenübertragbarkeit (Art. 20 DSGVO)\n- Widerspruch (Art. 21 DSGVO)\n- Widerruf einer Einwilligung jederzeit (Art. 7 Abs. 3 DSGVO)\n- Beschwerde bei der Aufsichtsbehörde (Art. 77 DSGVO)\n\nKontakt: as@sitekx.de\nBayerisches Landesamt für Datenschutzaufsicht (BayLDA): www.lda.bayern.de\n\n8. Kontakt\n\nAlexander Sitek, SitekX\nRichard-Strauss-Str. 4\n86663 Asbach-Bäumenheim\nE-Mail: as@sitekx.de\n\n9. Änderungen\n\nDiese Datenschutzerklärung kann aktualisiert werden. Über wesentliche Änderungen wird in der App informiert.`}
                 </Text>
               )}
               {legalModal === "nutzung" && (
