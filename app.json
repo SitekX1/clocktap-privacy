@@ -1,8 +1,8 @@
-{
+﻿{
   "expo": {
     "name": "Clocktap",
     "slug": "clocktap",
-    "version": "1.2.12",
+    "version": "1.2.13",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "clocktap",
