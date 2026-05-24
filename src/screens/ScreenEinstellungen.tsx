@@ -563,7 +563,15 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
       <ScrollView ref={scrollRef} style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 20 }}>
 
       {/* Premium Card — immer sichtbar */}
-      {isPro ? (
+      {isWorkspace ? (
+        <View style={{ backgroundColor: t.blue + "14", borderRadius: 14, padding: 16, marginBottom: 16, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: t.blue + "40" }}>
+          <Text style={{ fontSize: 26 }}>🏢</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: "700", color: t.blue }}>Workspace-Mitglied</Text>
+            <Text style={{ fontSize: 12, color: t.text3, marginTop: 2 }}>{settings.firma || "Workspace"} · Zugang vom Arbeitgeber</Text>
+          </View>
+        </View>
+      ) : isPro ? (
         <View style={{ backgroundColor: t.green + "18", borderRadius: 14, padding: 16, marginBottom: 16, flexDirection: "row", alignItems: "center", gap: 12, borderWidth: 1, borderColor: t.green + "44" }}>
           <Text style={{ fontSize: 26 }}>⭐</Text>
           <View style={{ flex: 1 }}>
@@ -658,45 +666,77 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
       <SectionHeader label="Abo" skey="abo" emoji="⭐" />
       {open.abo && (
         <Card t={t} style={{ padding: 16 }}>
-          {/* Aktueller Status */}
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <View>
-              <Text style={{ fontSize: 15, fontWeight: "700", color: t.text }}>Kostenlose Version</Text>
-              <Text style={{ fontSize: 12, color: t.text3, marginTop: 2 }}>Clocktap Free</Text>
-            </View>
-            <View style={{ backgroundColor: t.bg3, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
-              <Text style={{ fontSize: 12, color: t.text3, fontWeight: "600" }}>FREE</Text>
-            </View>
-          </View>
-          <Divider t={t} />
-          {/* Pro Features */}
-          <Text style={{ fontSize: 13, color: t.text3, marginTop: 14, marginBottom: 10, fontWeight: "600", letterSpacing: 0.5 }}>PRO ENTHÄLT</Text>
-          {[
-            { icon: "🤖", label: "KI Regiebericht (unbegrenzt)" },
-            { icon: "📸", label: "Schichtplan Foto-Import" },
-            { icon: "📊", label: "Erweiterte Statistiken & Export" },
-            { icon: "📅", label: "Kalender-Sync & Import" },
-            { icon: "☁️", label: "Datensicherung & Backup" },
-            { icon: "🔔", label: "Erinnerungen & Benachrichtigungen", soon: true },
-          ].map((f, i) => (
-            <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7 }}>
-              <Text style={{ fontSize: 16 }}>{f.icon}</Text>
-              <Text style={{ fontSize: 14, color: t.text }}>{f.label}</Text>
-              {f.soon && <Text style={{ fontSize: 11, color: t.text4, marginLeft: 2 }}>demnächst</Text>}
-            </View>
-          ))}
-          <Divider t={t} />
-          {/* Preis */}
-          <TouchableOpacity style={{
-            marginTop: 14, backgroundColor: t.blue, borderRadius: 12, paddingVertical: 14, alignItems: "center",
-          }} onPress={() => Alert.alert("Bald verfügbar", "Das Abo wird in Kürze verfügbar sein.")}>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>3,99 € / Monat</Text>
-            <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>monatlich kündbar</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={{ marginTop: 12, alignItems: "center", paddingVertical: 6 }}
-            onPress={() => Alert.alert("Abo wiederherstellen", "Diese Funktion wird mit der Abo-Umsetzung aktiviert.")}>
-            <Text style={{ fontSize: 13, color: t.text3 }}>Abo wiederherstellen</Text>
-          </TouchableOpacity>
+          {isWorkspace ? (
+            <>
+              {/* Workspace-Status */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <View>
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: t.text }}>Im Workspace</Text>
+                  <Text style={{ fontSize: 12, color: t.text3, marginTop: 2 }}>{settings.firma || "Workspace"}</Text>
+                </View>
+                <View style={{ backgroundColor: t.blue + "20", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 12, color: t.blue, fontWeight: "600" }}>WORKSPACE</Text>
+                </View>
+              </View>
+              <Divider t={t} />
+              <Text style={{ fontSize: 13, color: t.text2, marginTop: 14, lineHeight: 20 }}>
+                Dein Zugang wird über den Workspace deines Arbeitgebers bereitgestellt.
+              </Text>
+              <View style={{ backgroundColor: t.orange + "15", borderRadius: 10, padding: 12, marginTop: 12, borderWidth: 1, borderColor: t.orange + "40" }}>
+                <Text style={{ fontSize: 13, fontWeight: "600", color: t.orange, marginBottom: 4 }}>Hinweis: Google Play Abo</Text>
+                <Text style={{ fontSize: 12, color: t.text2, lineHeight: 18 }}>
+                  Wenn du ein aktives Clocktap-Abo über Google Play hast, kannst du es jetzt kündigen – dein Zugang bleibt über den Workspace erhalten.
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={{ marginTop: 14, backgroundColor: t.bg3, borderRadius: 12, paddingVertical: 14, alignItems: "center" }}
+                onPress={() => Linking.openURL("https://play.google.com/store/account/subscriptions")}>
+                <Text style={{ fontSize: 14, fontWeight: "600", color: t.text2 }}>Google Play Abos verwalten</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              {/* Aktueller Status */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+                <View>
+                  <Text style={{ fontSize: 15, fontWeight: "700", color: t.text }}>Kostenlose Version</Text>
+                  <Text style={{ fontSize: 12, color: t.text3, marginTop: 2 }}>Clocktap Free</Text>
+                </View>
+                <View style={{ backgroundColor: t.bg3, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 12, color: t.text3, fontWeight: "600" }}>FREE</Text>
+                </View>
+              </View>
+              <Divider t={t} />
+              {/* Pro Features */}
+              <Text style={{ fontSize: 13, color: t.text3, marginTop: 14, marginBottom: 10, fontWeight: "600", letterSpacing: 0.5 }}>PRO ENTHÄLT</Text>
+              {[
+                { icon: "🤖", label: "KI Regiebericht (unbegrenzt)" },
+                { icon: "📸", label: "Schichtplan Foto-Import" },
+                { icon: "📊", label: "Erweiterte Statistiken & Export" },
+                { icon: "📅", label: "Kalender-Sync & Import" },
+                { icon: "☁️", label: "Datensicherung & Backup" },
+                { icon: "🔔", label: "Erinnerungen & Benachrichtigungen", soon: true },
+              ].map((f, i) => (
+                <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 7 }}>
+                  <Text style={{ fontSize: 16 }}>{f.icon}</Text>
+                  <Text style={{ fontSize: 14, color: t.text }}>{f.label}</Text>
+                  {f.soon && <Text style={{ fontSize: 11, color: t.text4, marginLeft: 2 }}>demnächst</Text>}
+                </View>
+              ))}
+              <Divider t={t} />
+              {/* Preis */}
+              <TouchableOpacity style={{
+                marginTop: 14, backgroundColor: t.blue, borderRadius: 12, paddingVertical: 14, alignItems: "center",
+              }} onPress={() => Alert.alert("Bald verfügbar", "Das Abo wird in Kürze verfügbar sein.")}>
+                <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>3,99 € / Monat</Text>
+                <Text style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 2 }}>monatlich kündbar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ marginTop: 12, alignItems: "center", paddingVertical: 6 }}
+                onPress={() => Alert.alert("Abo wiederherstellen", "Diese Funktion wird mit der Abo-Umsetzung aktiviert.")}>
+                <Text style={{ fontSize: 13, color: t.text3 }}>Abo wiederherstellen</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </Card>
       )}
 
