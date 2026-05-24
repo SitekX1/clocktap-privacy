@@ -1,5 +1,6 @@
 ﻿import React from "react";
-import { View, Text, TouchableOpacity, ScrollView, Image, Modal, ActivityIndicator, Alert, Linking, TextInput } from "react-native";
+import { View, Text, TouchableOpacity, ScrollView, Image, Modal, ActivityIndicator, Alert, Linking, TextInput, KeyboardAvoidingView, Platform } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import FeedbackModal from "../FeedbackModal";
 import HintModal from "../HintModal";
 import * as ImagePicker from "expo-image-picker";
@@ -21,6 +22,7 @@ import { loadWorkspaceSettings, bulkUploadLocalData } from "../syncService";
 interface Props { state: AppState; dispatch: React.Dispatch<Action>; t: Theme; active?: boolean; }
 
 export default function ScreenEinstellungen({ state, dispatch, t, active }: Props) {
+  const insets = useSafeAreaInsets();
   const scrollRef = React.useRef<ScrollView>(null);
   const sectionY = React.useRef<Record<string, number>>({});
   React.useEffect(() => { if (active) scrollRef.current?.scrollTo({ y: 0, animated: false }); }, [active]);
@@ -744,8 +746,9 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
 
       {/* Workspace Login Modal */}
       <Modal visible={wsLoginVisible} transparent animationType="slide" onRequestClose={() => { setWsLoginVisible(false); setWsPassword(""); setWsError(""); }}>
-        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <View style={{ backgroundColor: t.bg2, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 40 }}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.5)" }}>
+            <View style={{ backgroundColor: t.bg2, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 24, paddingBottom: 24 + insets.bottom }}>
             <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
               <Text style={{ fontSize: 18, fontWeight: "700", color: t.text }}>Workspace beitreten</Text>
               <TouchableOpacity onPress={() => { setWsLoginVisible(false); setWsPassword(""); setWsError(""); }}>
@@ -790,8 +793,9 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
                 ? <ActivityIndicator color={t.text3} />
                 : <Text style={{ fontSize: 15, fontWeight: "700", color: "#fff" }}>Verbinden</Text>}
             </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
       </>
         );
@@ -896,6 +900,7 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
 
       <FeedbackModal visible={feedbackVisible} onClose={() => setFeedbackVisible(false)} t={t} />
 
+      {!isWorkspace && (<>
       {/* Arbeitszeit */}
       <SectionHeader label="Arbeitszeit" skey="arbeitszeit" emoji="⏱️" />
       {open.arbeitszeit && (
@@ -1192,6 +1197,12 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
           </View>
         </Card>
       )}
+      </>)}
+      {isWorkspace && (
+        <Card t={t} style={{ padding: 16, marginBottom: 4 }}>
+          <Text style={{ fontSize: 13, color: t.text3, lineHeight: 18 }}>🔒 Arbeitszeit, Urlaub und Stundenkonto werden vom Arbeitgeber festgelegt. Details unter "Mein Vertrag".</Text>
+        </Card>
+      )}
 
       {/* Features */}
       <SectionHeader label="Features" skey="features" emoji="⚡" />
@@ -1228,7 +1239,7 @@ export default function ScreenEinstellungen({ state, dispatch, t, active }: Prop
       {open.kalender && (
         <Card t={t} style={{ padding: 0, paddingHorizontal: 16 }}>
           {/* Bundesland */}
-          <TouchableOpacity onPress={() => setBundeslandModalVisible(true)} style={{ paddingVertical: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <TouchableOpacity onPress={isWorkspace ? undefined : () => setBundeslandModalVisible(true)} style={{ paddingVertical: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
             <View>
               <Text style={{ fontSize: 15, color: t.text }}>Feiertage / Bundesland</Text>
               <Text style={{ fontSize: 12, color: t.text3, marginTop: 2 }}>Automatische Feiertage im Kalender</Text>

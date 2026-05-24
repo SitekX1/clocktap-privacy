@@ -1,25 +1,37 @@
 {
   "expo": {
-    "name": "workly-native",
-    "slug": "workly-native",
-    "version": "1.0.0",
+    "name": "Clocktap",
+    "slug": "clocktap",
+    "version": "1.2.12",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "worklynative",
+    "scheme": "clocktap",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NFCReaderUsageDescription": "Clocktap verwendet NFC um dich schnell ein- und auszustempeln."
+      },
+      "entitlements": {
+        "com.apple.developer.nfc.readersession.formats": ["NDEF"]
+      }
     },
     "android": {
+      "package": "com.clocktap.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.CAMERA"
+      ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
       "output": "static",
@@ -27,6 +39,15 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withClockWidget",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#30d158",
+          "defaultChannel": "default"
+        }
+      ],
       [
         "expo-splash-screen",
         {
@@ -38,11 +59,30 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      "@react-native-community/datetimepicker",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Clocktap möchte deinen Kalender lesen und Schichtplan-Einträge hinzufügen."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Clocktap benötigt das Mikrofon für die Spracheingabe.",
+          "speechRecognitionPermission": "Clocktap nutzt Spracherkennung für den KI-Bericht."
+        }
       ]
     ],
     "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d6d0d824-77ff-4451-8df9-b939e6fb0a98"
+      }
     }
   }
 }
